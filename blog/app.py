@@ -6,6 +6,7 @@ from blog.views.users import users_app
 from blog.views.articles import articles_app
 from blog.models.database import db
 from blog.views.auth import login_manager, auth_app
+from blog.security import flask_bcrypt
 import os
 
 app = Flask(__name__)
@@ -26,6 +27,7 @@ login_manager.init_app(app)
 cfg_name = os.environ.get("CONFIG_NAME") or "DevConfig"
 app.config.from_object(f"blog.configs.{cfg_name}")
 
+flask_bcrypt.init_app(app)
 
 
 @app.route("/")
@@ -108,14 +110,24 @@ def handle_zero_division_error(error):
     app.logger.exception("Here's traceback for zero division error")
     return "Never divide by zero!", 400
 
-@app.cli.command("init-db")
-def init_db():
+
+@app.cli.command("create-admin")
+def create_admin():
     """
     Run in your terminal:
-    flask init-db
+    ➜ flask create-admin
+    > created admin: <User #1 'admin'>
     """
-    db.create_all()
-    print("done!")
+
+    from blog.models import User
+
+    admin = User(username="admin", is_staff=True)
+    admin.password = os.environ.get("ADMIN_PASSWORD") or "adminpass"
+
+    db.session.add(admin)
+    db.session.commit()
+
+    print("created admin:", admin)
 
 
 @app.cli.command("create-users")
@@ -139,4 +151,3 @@ def create_users():
 @app.before_first_request
 def create_tables():
     db.create_all()
-
